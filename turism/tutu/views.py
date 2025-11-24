@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
+#from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Destination, Tour, Booking
 from .serializers import (
@@ -22,8 +22,8 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 class DestinationViewSet(viewsets.ModelViewSet):
     queryset = Destination.objects.filter(is_active=True)
     serializer_class = DestinationSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['country', 'city']
+    filter_backends = [SearchFilter, OrderingFilter]
+    #filterset_fields = ['country', 'city']
     search_fields = ['name', 'description', 'country', 'city']
     ordering_fields = ['price', 'duration_days', 'created_at']
     ordering = ['-created_at']
@@ -37,11 +37,10 @@ class DestinationViewSet(viewsets.ModelViewSet):
 class TourViewSet(viewsets.ModelViewSet):
     queryset = Tour.objects.filter(is_active=True).select_related('destination')
     serializer_class = TourSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['tour_type', 'destination__country', 'destination__city']
-    search_fields = ['name', 'description', 'destination__name']
-    ordering_fields = ['start_date', 'end_date', 'destination__price']
-    ordering = ['-created_at']
+    filter_backends = [SearchFilter, OrderingFilter]
+    #filterset_fields = ['tour_type']
+    search_fields = ['name', 'description']
+    ordering_fields = ['start_date', 'end_date']
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -54,7 +53,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all().select_related('user', 'tour', 'tour__destination')
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filter_backends = [OrderingFilter]
     filterset_fields = ['status']
     ordering_fields = ['booking_date', 'total_price']
     ordering = ['-booking_date']
