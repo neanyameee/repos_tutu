@@ -135,58 +135,84 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 REST_FRAMEWORK = {
+    # Классы аутентификации - JWT для API
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+
+    # Права доступа по умолчанию
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # Чтение - всем, запись - авторизованным
     ),
+
+    # Пагинация - разбиение на страницы
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 10,  # 10 записей на страницу
+
+    # Системы фильтрации
     'DEFAULT_FILTER_BACKENDS': [
-        #'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
+        'django_filters.rest_framework.DjangoFilterBackend',  # Фильтрация по полям
+        'rest_framework.filters.SearchFilter',  # Поиск
+        'rest_framework.filters.OrderingFilter',  # Сортировка
     ],
+
+    # Автоматическая генерация схемы для Swagger
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+# ==================== JWT НАСТРОЙКИ ====================
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Время жизни access токена - 1 час
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1)  # Время жизни refresh токена - 1 день
 }
 
+# ==================== CORS НАСТРОЙКИ ====================
+
+# Разрешенные источники для межсайтовых запросов
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
+    "http://localhost:3000",  # React development server
+    "http://127.0.0.1:3000"  # React development server (альтернативный)
 ]
 
+# Разрешить передачу cookies и авторизационных данных
 CORS_ALLOW_CREDENTIALS = True
 
-SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header'
-        }
-    },
-    'USE_SESSION_AUTH': False,
-}
+# ==================== SWAGGER НАСТРОЙКИ ====================
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Travel Agency API',
-    'DESCRIPTION': 'API для туристического агентства',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
+    'TITLE': 'Туристическое агентство - API',  # Заголовок документации
+    'DESCRIPTION': 'API для бронирования туров и управления направлениями',  # Описание
+    'VERSION': '1.0.0',  # Версия API
+    'SERVE_INCLUDE_SCHEMA': False,  # Не включать полную схему в UI
+
+    # Настройки Swagger UI
     'SWAGGER_UI_SETTINGS': {
-        'persistAuthorization': True,
+        'persistAuthorization': True,  # Сохранять авторизацию при перезагрузке
+        'displayRequestDuration': True,  # Показывать время выполнения запросов
     },
-    'COMPONENT_SPLIT_REQUEST': True
+
+    'COMPONENT_SPLIT_REQUEST': True,  # Разделять запросы на компоненты
+
+    # Определение схемы безопасности для JWT
+    'SECURITY': [
+        {
+            'Bearer': {
+                'type': 'http',  # Тип схемы - HTTP
+                'scheme': 'bearer',  # Схема - Bearer token
+                'bearerFormat': 'JWT',  # Формат - JWT
+            }
+        }
+    ],
+
+    # Требования безопасности по умолчанию
+    'SECURITY_REQUIREMENTS': [
+        {
+            'Bearer': []  # Для всех endpoints требуется JWT токен
+        }
+    ],
 }
+
+# Тип поля для автоматических первичных ключей
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

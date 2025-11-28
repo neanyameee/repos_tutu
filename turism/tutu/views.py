@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-#from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Destination, Tour, Booking
 from .serializers import (
@@ -11,85 +11,144 @@ from .serializers import (
     BookingCreateSerializer
 )
 
-
-class IsOwnerOrReadOnly(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return obj.user == request.user
+"""
+Это файл views.py - содержит ViewSet'ы которые обрабатывают HTTP запросы
+и определяют логику работы API endpoints.
+Каждый ViewSet автоматически создает стандартные CRUD операции.
+"""
 
 
 class DestinationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для работы с направлениями (Destinations).
+    Обрабатывает все CRUD операции для модели Destination.
+    """
+
+    # Базовый queryset - только активные направления
     queryset = Destination.objects.filter(is_active=True)
+
+    # Сериализатор для преобразования данных
     serializer_class = DestinationSerializer
-    filter_backends = [SearchFilter, OrderingFilter]
-    #filterset_fields = ['country', 'city']
-    search_fields = ['name', 'description', 'country', 'city']
-    ordering_fields = ['price', 'duration_days', 'created_at']
-    ordering = ['-created_at']
+
+    # Системы фильтрации, поиска и сортировки
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['country', 'city']  # Фильтрация по стране и городу
+    search_fields = ['name', 'description', 'country', 'city']  # Поля для поиска
+    ordering_fields = ['price', 'duration_days', 'created_at']  # Поля для сортировки
+    ordering = ['-created_at']  # Сортировка по умолчанию - новые сначала
 
     def get_permissions(self):
+        """
+        Динамическое определение прав доступа в зависимости от действия:
+        - Чтение: доступно всем (даже неавторизованным)
+        - Создание/изменение/удаление: только администраторам
+        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [permissions.IsAdminUser()]
-        return [permissions.IsAuthenticatedOrReadOnly()]
+            return [permissions.IsAdminUser()]  # Только админы
+        return [permissions.IsAuthenticatedOrReadOnly()]  # Чтение - всем, запись - авторизованным
 
 
 class TourViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для работы с турами (Tours).
+    Обрабатывает все CRUD операции для модели Tour.
+    """
+
+    # Базовый queryset - только активные туры + предзагрузка связанного направления
     queryset = Tour.objects.filter(is_active=True).select_related('destination')
+
+    # Сериализатор для туров
     serializer_class = TourSerializer
-    filter_backends = [SearchFilter, OrderingFilter]
-    #filterset_fields = ['tour_type']
-    search_fields = ['name', 'description']
-    ordering_fields = ['start_date', 'end_date']
+
+    # Системы фильтрации, поиска и сортировки
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['tour_type', 'destination__country', 'destination__city']  # Фильтрация по типу и месту
+    search_fields = ['name', 'description', 'destination__name']  # Поиск по названию тура и направления
+    ordering_fields = ['start_date', 'end_date', 'destination__price']  # Сортировка по датам и цене
+    ordering = ['-created_at']  # Новые туры первыми
 
     def get_permissions(self):
+        """
+        Права доступа аналогичные DestinationViewSet:
+        - Чтение: всем
+        - Изменение: только админам
+        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticatedOrReadOnly()]
 
 
 class BookingViewSet(viewsets.ModelViewSet):
-    # Добавляем queryset по умолчанию
-    queryset = Booking.objects.all().select_related('user', 'tour', 'tour__destination')
+    """
+    ViewSet для работы с бронированиями (Bookings).
+    Специальная логика для разных типов пользователей.
+    """
+
+    # Базовый queryset (будет переопределен в get_queryset)
+    queryset = Booking.objects.all()
+
+    # Сериализатор по умолчанию
     serializer_class = BookingSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
-    filter_backends = [OrderingFilter]
-    filterset_fields = ['status']
-    ordering_fields = ['booking_date', 'total_price']
-    ordering = ['-booking_date']
+
+    # Все действия требуют авторизации
+    permission_classes = [permissions.IsAuthenticated]
+
+    # Системы фильтрации и сортировки
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['status']  # Фильтрация по статусу бронирования
+    ordering_fields = ['booking_date', 'total_price']  # Сортировка по дате и цене
+    ordering = ['-booking_date']  # Последние бронирования первыми
 
     def get_queryset(self):
-        # Переопределяем get_queryset для фильтрации по пользователю
+        """
+        Динамический queryset в зависимости от пользователя:
+        - Обычные пользователи: видят только СВОИ бронирования
+        - Администраторы: видят ВСЕ бронирования
+        """
         if self.request.user.is_staff:
+            # Админы видят все бронирования с предзагрузкой связей
             return Booking.objects.all().select_related('user', 'tour', 'tour__destination')
+
+        # Обычные пользователи видят только свои бронирования
         return Booking.objects.filter(user=self.request.user).select_related('user', 'tour', 'tour__destination')
 
     def get_serializer_class(self):
+        """
+        Выбор сериализатора в зависимости от действия:
+        - При создании: BookingCreateSerializer (ограниченные поля)
+        - В остальных случаях: BookingSerializer (все поля)
+        """
         if self.action == 'create':
             return BookingCreateSerializer
         return BookingSerializer
 
     def perform_create(self, serializer):
+        """
+        Автоматически привязывает текущего пользователя к бронированию при создании.
+        Вызывается при сохранении нового объекта.
+        """
         serializer.save(user=self.request.user)
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
+        """
+        Кастомное действие для отмены бронирования.
+        Доступно по URL: /api/bookings/{id}/cancel/
+        """
+        # Получаем конкретное бронирование
         booking = self.get_object()
+
+        # Проверяем можно ли отменить (только бронирования в статусе 'ожидание')
         if booking.status == 'pending':
+            # Меняем статус на 'отменено'
             booking.status = 'cancelled'
             booking.save()
+
+            # Возвращаем успешный ответ
             return Response({'status': 'Бронирование отменено'})
+
+        # Если статус не 'ожидание' - возвращаем ошибку
         return Response(
             {'error': 'Невозможно отменить бронирование с текущим статусом'},
             status=status.HTTP_400_BAD_REQUEST
         )
-
-    @action(detail=False, methods=['get'])
-    def my_bookings(self, request):
-        bookings = self.get_queryset().filter(user=request.user)
-        page = self.paginate_queryset(bookings)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(bookings, many=True)
-        return Response(serializer.data)
