@@ -2,28 +2,14 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Destination, Tour, Booking
 
-"""
-Это файл serializers.py - он преобразует данные моделей Django в JSON 
-и обратно для API. Сериализаторы определяют, какие поля будут отображаться 
-в API и как они будут валидироваться.
-"""
-
-
 class UserSerializer(serializers.ModelSerializer):
     """
     Сериализатор для модели пользователя Django.
     Преобразует объект User в JSON для API ответов.
     """
-
     class Meta:
         model = User  # Указываем, какую модель сериализуем
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
-        # ↑ Какие поля пользователя будут включены в API ответ:
-        # - id: уникальный идентификатор
-        # - username: логин пользователя
-        # - email: электронная почта
-        # - first_name: имя
-        # - last_name: фамилия
+        fields = ['id', 'username', 'email', 'first_name', 'last_name'] # Какие поля пользователя будут включены в API ответ:
 
 
 class DestinationSerializer(serializers.ModelSerializer):
@@ -35,9 +21,6 @@ class DestinationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Destination  # Связываем с моделью Direction
         fields = '__all__'  # Включаем ВСЕ поля из модели в API
-        # Автоматически будут включены:
-        # id, name, description, country, city, price, duration_days,
-        # image, is_active, created_at
 
 
 class TourSerializer(serializers.ModelSerializer):
@@ -60,12 +43,7 @@ class TourSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tour  # Связываем с моделью Tour
-        fields = '__all__'  # Все поля модели + вычисляемые поля выше
-        # Будут включены:
-        # - Все поля модели Tour (id, name, description, tour_type, и т.д.)
-        # - destination_name (название направления)
-        # - destination_country (страна направления)
-
+        fields = '__all__'
 
 class BookingSerializer(serializers.ModelSerializer):
     """
@@ -73,7 +51,6 @@ class BookingSerializer(serializers.ModelSerializer):
     Используется когда нужно ПОЛУЧИТЬ информацию о бронировании.
     Включает подробную информацию о связанных объектах.
     """
-
     # Вложенный сериализатор - полная информация о пользователе
     user = UserSerializer(
         read_only=True  # Только для чтения, нельзя изменить через API
@@ -82,24 +59,18 @@ class BookingSerializer(serializers.ModelSerializer):
     # Вычисляемое поле - название тура
     tour_name = serializers.CharField(
         source='tour.name',  # Берем название из связанного тура
-        read_only=True  # Только для чтения
+        read_only=True
     )
-
     # Вычисляемое поле - название направления через тур
     destination_name = serializers.CharField(
-        source='tour.destination.name',  # Цепочка: тур → направление → название
-        read_only=True  # Только для чтения
+        source='tour.destination.name',
+        read_only=True
     )
 
     class Meta:
         model = Booking  # Связываем с моделью Booking
-        fields = '__all__'  # Все поля + вычисляемые поля выше
-        read_only_fields = ['user', 'booking_date', 'total_price']
-        # ↑ Поля, которые нельзя изменить через API:
-        # - user: устанавливается автоматически из текущего пользователя
-        # - booking_date: устанавливается автоматически при создании
-        # - total_price: рассчитывается автоматически при сохранении
-
+        fields = '__all__'  # Все поля
+        read_only_fields = ['user', 'booking_date', 'total_price'] # Поля, которые нельзя изменить через API: user, booking_date, total_price
 
 class BookingCreateSerializer(serializers.ModelSerializer):
     """
@@ -110,15 +81,5 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking  # Связываем с моделью Booking
-        fields = ['tour', 'number_of_people', 'contact_phone', 'contact_email']
-        # Только эти поля можно указать при создании бронирования:
-        # - tour: какой тур бронируем (обязательно)
-        # - number_of_people: количество человек (обязательно)
-        # - contact_phone: телефон для связи (обязательно)
-        # - contact_email: email для уведомлений (обязательно)
-
-        # НЕ включены (устанавливаются автоматически):
-        # - user: берется из текущего авторизованного пользователя
-        # - booking_date: текущая дата и время
-        # - total_price: рассчитывается из цены тура и количества человек
-        # - status: по умолчанию "ожидание"
+        fields = ['tour', 'number_of_people', 'contact_phone', 'contact_email'] # Только эти поля можно указать при создании бронирования: tour, number_of_people, contact_phone, contact_email
+        # НЕ включены user,booking_date,total_price,status

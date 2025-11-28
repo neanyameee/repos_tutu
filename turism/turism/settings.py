@@ -126,9 +126,17 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+os.makedirs(STATIC_ROOT, exist_ok=True)
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -170,20 +178,14 @@ SIMPLE_JWT = {
 
 # ==================== CORS НАСТРОЙКИ ====================
 
-# Разрешенные источники для межсайтовых запросов
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React development server
-    "http://127.0.0.1:3000"  # React development server (альтернативный)
-]
-
 # Разрешить передачу cookies и авторизационных данных
 CORS_ALLOW_CREDENTIALS = True
 
 # ==================== SWAGGER НАСТРОЙКИ ====================
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Туристическое агентство - API',  # Заголовок документации
-    'DESCRIPTION': 'API для бронирования туров и управления направлениями',  # Описание
+    'TITLE': 'Туристическое агентство - API',
+    'DESCRIPTION': 'API для бронирования туров и управления направлениями',
     'VERSION': '1.0.0',  # Версия API
     'SERVE_INCLUDE_SCHEMA': False,  # Не включать полную схему в UI
 
@@ -216,3 +218,18 @@ SPECTACULAR_SETTINGS = {
 
 # Тип поля для автоматических первичных ключей
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+if os.environ.get('DOCKER_ENV'):
+    DEBUG = False
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+
+    # Static files for production
+    STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+    # Database for Docker (можно использовать PostgreSQL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
+    }

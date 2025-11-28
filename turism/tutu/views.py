@@ -11,18 +11,7 @@ from .serializers import (
     BookingCreateSerializer
 )
 
-"""
-Это файл views.py - содержит ViewSet'ы которые обрабатывают HTTP запросы
-и определяют логику работы API endpoints.
-Каждый ViewSet автоматически создает стандартные CRUD операции.
-"""
-
-
 class DestinationViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet для работы с направлениями (Destinations).
-    Обрабатывает все CRUD операции для модели Destination.
-    """
 
     # Базовый queryset - только активные направления
     queryset = Destination.objects.filter(is_active=True)
@@ -40,7 +29,7 @@ class DestinationViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """
         Динамическое определение прав доступа в зависимости от действия:
-        - Чтение: доступно всем (даже неавторизованным)
+        - Чтение: доступно всем
         - Создание/изменение/удаление: только администраторам
         """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -49,11 +38,6 @@ class DestinationViewSet(viewsets.ModelViewSet):
 
 
 class TourViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet для работы с турами (Tours).
-    Обрабатывает все CRUD операции для модели Tour.
-    """
-
     # Базовый queryset - только активные туры + предзагрузка связанного направления
     queryset = Tour.objects.filter(is_active=True).select_related('destination')
 
@@ -68,22 +52,12 @@ class TourViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']  # Новые туры первыми
 
     def get_permissions(self):
-        """
-        Права доступа аналогичные DestinationViewSet:
-        - Чтение: всем
-        - Изменение: только админам
-        """
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticatedOrReadOnly()]
 
 
 class BookingViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet для работы с бронированиями (Bookings).
-    Специальная логика для разных типов пользователей.
-    """
-
     # Базовый queryset (будет переопределен в get_queryset)
     queryset = Booking.objects.all()
 
@@ -100,15 +74,9 @@ class BookingViewSet(viewsets.ModelViewSet):
     ordering = ['-booking_date']  # Последние бронирования первыми
 
     def get_queryset(self):
-        """
-        Динамический queryset в зависимости от пользователя:
-        - Обычные пользователи: видят только СВОИ бронирования
-        - Администраторы: видят ВСЕ бронирования
-        """
         if self.request.user.is_staff:
             # Админы видят все бронирования с предзагрузкой связей
             return Booking.objects.all().select_related('user', 'tour', 'tour__destination')
-
         # Обычные пользователи видят только свои бронирования
         return Booking.objects.filter(user=self.request.user).select_related('user', 'tour', 'tour__destination')
 
@@ -131,10 +99,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
-        """
-        Кастомное действие для отмены бронирования.
-        Доступно по URL: /api/bookings/{id}/cancel/
-        """
+        # Кастомное действие для отмены бронирования.
         # Получаем конкретное бронирование
         booking = self.get_object()
 
